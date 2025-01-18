@@ -1,0 +1,47 @@
+Project Gift_Card_Management_System {
+  database_type: 'PostgreSQL'
+  Note: 'A Gift Card Management System'
+}
+
+Table Users {
+    id Integer [pk, unique]
+    email String [unique]
+    username String [unique]
+    first_name String
+    last_name String
+    hashed_password String
+    is_active Boolean [default: true]
+    role String
+    created_at DateTime [default: "now()", note: "UTC"]
+    updated_at DateTime [note: "Updated automatically on modification"]
+    deleted_at DateTime [note: "Timestamp of soft deletion"]
+    is_deleted Boolean [default: false]
+
+    Note: "This table stores user details with soft delete support."
+}
+
+Table GiftCards {
+    id Integer [pk, unique]
+    code String [unique]
+    residual_amount Integer
+    expiration DateTime
+    created_by Integer [ref: > Users.id]
+    created_at DateTime [default: "now()", note: "UTC"]
+    updated_at DateTime [note: "Updated automatically on modification"]
+    deleted_at DateTime [note: "Timestamp of soft deletion"]
+    is_deleted Boolean [default: false]
+
+    Note: "This table stores gift card details with soft delete support."
+}
+
+Table Transactions {
+    id Integer [pk, unique]
+    gift_card_id Integer [ref: > GiftCards.id]
+    amount Integer
+    created_at DateTime [default: "now()", note: "UTC"]
+    updated_at DateTime [note: "Updated automatically on modification"]
+    deleted_at DateTime [note: "Timestamp of soft deletion"]
+    is_deleted Boolean [default: false]
+
+    Note: "This table stores gift card transactions with soft delete support."
+}
