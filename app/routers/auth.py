@@ -13,10 +13,10 @@ from sqlalchemy.exc import IntegrityError
 
 router = APIRouter(
     prefix='/auth',
-    tags=['auth']
+    tags=['Auth']
 )
 
-@router.post("/", status_code=status.HTTP_201_CREATED, response_model=BaseResponse)
+@router.post("/create-user", status_code=status.HTTP_201_CREATED, response_model=BaseResponse)
 async def create_user(db: db_dependency,
                       user: user_service.user_dependency,
                       create_user_request: CreateUserRequest):

@@ -4,7 +4,7 @@ from fastapi import Depends, HTTPException
 from starlette import status
 from utils.encryption import bcrypt_context
 from configurations import config
-from dependencies import token_dependency, db_dependency
+from dependencies import token_dependency
 from models.database.user import User
 from jose import jwt, JWTError
 
