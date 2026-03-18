@@ -12,6 +12,10 @@ from jose import jwt, JWTError
 async def get_current_user(token: token_dependency):
     try:
         payload = jwt.decode(token, config.BCRYPT_SECRET_KEY, algorithms=[config.BCRYPT_ALGORITHM])
+        token_type: str = payload.get('type')
+        if token_type != 'access':
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                                detail='Invalid token type.')
         username: str = payload.get('sub')
         user_id: int = payload.get('id')
         user_role: str = payload.get('role')
@@ -27,7 +31,7 @@ user_dependency = Annotated[dict, Depends(get_current_user)]
 
 
 async def create_user(create_user_request, db):
-    
+
     create_user_model = User(
         email=create_user_request.email,
         username=create_user_request.username,
@@ -53,7 +57,33 @@ def authenticate_user(username: str, password: str, db):
 
 
 def create_access_token(username: str, user_id: int, role: str, expires_delta: timedelta):
-    encode = {'sub': username, 'id': user_id, 'role': role}
+    encode = {'sub': username, 'id': user_id, 'role': role, 'type': 'access'}
     expires = datetime.now(timezone.utc) + expires_delta
     encode.update({'exp': expires})
     return jwt.encode(encode, config.BCRYPT_SECRET_KEY, algorithm=config.BCRYPT_ALGORITHM)
+
+
+def create_refresh_token(username: str, user_id: int, role: str, expires_delta: timedelta):
+    encode = {'sub': username, 'id': user_id, 'role': role, 'type': 'refresh'}
+    expires = datetime.now(timezone.utc) + expires_delta
+    encode.update({'exp': expires})
+    return jwt.encode(encode, config.BCRYPT_SECRET_KEY, algorithm=config.BCRYPT_ALGORITHM)
+
+
+def validate_refresh_token(token: str) -> dict:
+    try:
+        payload = jwt.decode(token, config.BCRYPT_SECRET_KEY, algorithms=[config.BCRYPT_ALGORITHM])
+        token_type: str = payload.get('type')
+        if token_type != 'refresh':
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                                detail='Invalid token type. Expected refresh token.')
+        username: str = payload.get('sub')
+        user_id: int = payload.get('id')
+        user_role: str = payload.get('role')
+        if username is None or user_id is None:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                                detail='Could not validate refresh token.')
+        return {'username': username, 'id': user_id, 'user_role': user_role}
+    except JWTError:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                            detail='Invalid or expired refresh token.')

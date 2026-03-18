@@ -7,7 +7,9 @@ from utils.converters import serialize_sqlalchemy_obj
 from models.responses import BaseResponse
 from models.responses.token_response import TokenResponse
 from models.requests import CreateUserRequest
+from models.requests.refresh_token_request import RefreshTokenRequest
 from dependencies import db_dependency, form_data_dependency
+from configurations import config
 import services.user_service as user_service
 from sqlalchemy.exc import IntegrityError
 
@@ -61,7 +63,7 @@ async def create_user(db: db_dependency,
                 data={}
             ).model_dump()
         )
-    
+
     except Exception as e:
         print(e)
         return JSONResponse(
@@ -88,9 +90,24 @@ async def login_for_access_token(form_data: form_data_dependency,
                 ).model_dump()
             )
 
-        token = user_service.create_access_token(user.username, user.id, user.role, timedelta(hours=1))
+        access_token = user_service.create_access_token(
+            user.username,
+            user.id,
+            user.role,
+            timedelta(minutes=config.ACCESS_TOKEN_EXPIRE_MINUTES)
+        )
+        refresh_token = user_service.create_refresh_token(
+            user.username,
+            user.id,
+            user.role,
+            timedelta(days=config.REFRESH_TOKEN_EXPIRE_DAYS)
+        )
 
-        return TokenResponse(access_token=token, token_type='bearer')
+        return TokenResponse(
+            access_token=access_token,
+            refresh_token=refresh_token,
+            token_type='bearer'
+        )
     except Exception as e:
         print(e)
         return JSONResponse(
@@ -101,3 +118,26 @@ async def login_for_access_token(form_data: form_data_dependency,
                 data={}
             ).model_dump()
         )
+
+@router.post("/refresh", response_model=TokenResponse)
+async def refresh_access_token(request: RefreshTokenRequest):
+    user_data = user_service.validate_refresh_token(request.refresh_token)
+
+    access_token = user_service.create_access_token(
+        user_data['username'],
+        user_data['id'],
+        user_data['user_role'],
+        timedelta(minutes=config.ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
+    refresh_token = user_service.create_refresh_token(
+        user_data['username'],
+        user_data['id'],
+        user_data['user_role'],
+        timedelta(days=config.REFRESH_TOKEN_EXPIRE_DAYS)
+    )
+
+    return TokenResponse(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        token_type='bearer'
+    )
